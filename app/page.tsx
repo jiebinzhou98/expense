@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAccountBalances } from '@/lib/api/balances'
 import { fetchTransactions } from '@/lib/api/transactions'
+import { fmtMoney } from '@/lib/format'                    // ← add this
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 
@@ -29,15 +30,17 @@ export default function Dashboard() {
       <div className="grid sm:grid-cols-3 gap-4">
         <Card className="p-4">
           <div className="text-sm text-muted-foreground">This month income</div>
-          <div className="text-2xl font-semibold">${income.toFixed(2)}</div>
+          <div className="text-2xl font-semibold">{fmtMoney(income)}</div>             {/* ← changed */}
         </Card>
         <Card className="p-4">
           <div className="text-sm text-muted-foreground">This month expense</div>
-          <div className="text-2xl font-semibold">-${expense.toFixed(2)}</div>
+          <div className="text-2xl font-semibold">-{fmtMoney(-expense)}</div>          {/* ← changed */}
         </Card>
         <Card className="p-4">
           <div className="text-sm text-muted-foreground">This month net</div>
-          <div className={`text-2xl font-semibold ${net >= 0 ? '' : 'text-red-600'}`}>${net.toFixed(2)}</div>
+          <div className={`text-2xl font-semibold ${net >= 0 ? '' : 'text-red-600'}`}>
+            {fmtMoney(net)}                                                            {/* ← changed */}
+          </div>
         </Card>
       </div>
 
@@ -50,7 +53,7 @@ export default function Dashboard() {
             <div className="font-medium">{b.name}</div>
             <div className="text-sm text-muted-foreground">{b.currency}</div>
             <div className="mt-2 text-xl font-semibold">
-              {Number(b.balance).toFixed(2)} {b.currency}
+              {fmtMoney(Number(b.balance), b.currency)}                                  {/* ← changed */}
             </div>
           </Card>
         ))}

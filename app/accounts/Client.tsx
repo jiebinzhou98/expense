@@ -1,9 +1,13 @@
 // app/accounts/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAccounts, createAccount, deleteAccount, type Account } from '@/lib/api/accounts'
+
+import { fetchAccountBalances } from '@/lib/api/balances'
+import { fmtMoney } from '@/lib/format'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 
 const CURRENCIES: Account['currency'][] = ['CAD', 'USD', 'EUR', 'GBP', 'JPY']
+
 
 export default function AccountsPage() {
   const qc = useQueryClient()
@@ -25,6 +30,15 @@ export default function AccountsPage() {
     queryFn: fetchAccounts,
   })
 
+  const {data: balances} = useQuery({
+    queryKey: ['account_balances'],
+    queryFn: fetchAccountBalances,
+  })
+
+  const balanceMap = useMemo(
+    () => Object.fromEntries((balances ?? []).map(b => [b.account_id, b])),[balances]
+  )
+
   const createMut = useMutation({
     mutationFn: createAccount,
     onSuccess: () => {
@@ -33,6 +47,7 @@ export default function AccountsPage() {
       setName('')
       setCurrency('CAD')
       qc.invalidateQueries({ queryKey: ['accounts'] }) // ✅ refetch list
+      qc.invalidateQueries({queryKey: ['account_balances']})
     },
     onError: (e: any) => toast.error(e.message ?? 'Failed to create'),
   })
@@ -113,9 +128,20 @@ export default function AccountsPage() {
               <div className="font-medium">{a.name}</div>
               <div className="text-sm text-muted-foreground">{a.currency}</div>
             </div>
-            <Button variant="destructive" onClick={() => deleteMut.mutate(a.id)}>
-              Delete
-            </Button>
+
+            {/* 👉 Add this right side */}
+            <div className="text-right">
+              <div className="text-lg font-semibold">
+                {fmtMoney(Number(balanceMap[a.id]?.balance ?? 0), a.currency)}
+              </div>
+              <Button
+                variant="destructive"
+                className="mt-2"
+                onClick={() => deleteMut.mutate(a.id)}
+              >
+                Delete
+              </Button>
+            </div>
           </Card>
         ))}
         {data?.length === 0 && !isLoading && !error && (
