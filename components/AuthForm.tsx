@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
 import { supabase } from '@/lib/supabase/client'
@@ -12,12 +12,12 @@ import { authSchema, type AuthValues } from '@/lib/validators'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 
 export default function AuthForm({ mode }: { mode: 'register' | 'login' }) {
   const router = useRouter()
+  const search = useSearchParams()
+  const redirectTo = search.get('redirect') || '/'
   const [busy, setBusy] = useState(false)
 
   const form = useForm<AuthValues>({
@@ -36,6 +36,9 @@ export default function AuthForm({ mode }: { mode: 'register' | 'login' }) {
         })
         if (error) throw error
         toast.success('Check your email to confirm your account.')
+        // optional redirect after sign up:
+        router.replace('/')          // or '/login'
+        router.refresh()
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: values.email,
@@ -43,7 +46,9 @@ export default function AuthForm({ mode }: { mode: 'register' | 'login' }) {
         })
         if (error) throw error
         toast.success('Logged in')
-        router.push('/accounts')
+        // 👇 key change: go back to intended page & refresh server header
+        router.replace(redirectTo)
+        router.refresh()
       }
     } catch (e: any) {
       toast.error(e.message ?? 'Auth failed')

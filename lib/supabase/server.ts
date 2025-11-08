@@ -3,7 +3,6 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createSupabaseServerClient() {
-  // In Next 15+ types, cookies() can be Promise<ReadonlyRequestCookies>
   const cookieStore: any = await (cookies() as any)
 
   return createServerClient(
