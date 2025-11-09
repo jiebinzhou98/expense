@@ -4,7 +4,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchAccounts, createAccount, deleteAccount, type Account } from '@/lib/api/accounts'
-
 import { fetchAccountBalances } from '@/lib/api/balances'
 import { fmtMoney } from '@/lib/format'
 
@@ -18,25 +17,23 @@ import { toast } from 'sonner'
 
 const CURRENCIES: Account['currency'][] = ['CAD', 'USD', 'EUR', 'GBP', 'JPY']
 
-
 export default function AccountsPage() {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState<Account['currency']>('CAD')
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: fetchAccounts,
-  })
-
-  const {data: balances} = useQuery({
-    queryKey: ['account_balances'],
-    queryFn: fetchAccountBalances,
-  })
+  const { data: accounts, isLoading, error } = useQuery({ queryKey: ['accounts'], queryFn: fetchAccounts })
+  const { data: balances } = useQuery({ queryKey: ['account_balances'], queryFn: fetchAccountBalances })
 
   const balanceMap = useMemo(
-    () => Object.fromEntries((balances ?? []).map(b => [b.account_id, b])),[balances]
+    () => Object.fromEntries((balances ?? []).map(b => [b.account_id, b])),
+    [balances]
+  )
+
+  const total = useMemo(
+    () => (balances ?? []).reduce((s, b) => s + Number(b.balance || 0), 0),
+    [balances]
   )
 
   const createMut = useMutation({
@@ -46,8 +43,8 @@ export default function AccountsPage() {
       setOpen(false)
       setName('')
       setCurrency('CAD')
-      qc.invalidateQueries({ queryKey: ['accounts'] }) // ✅ refetch list
-      qc.invalidateQueries({queryKey: ['account_balances']})
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+      qc.invalidateQueries({ queryKey: ['account_balances'] })
     },
     onError: (e: any) => toast.error(e.message ?? 'Failed to create'),
   })
@@ -57,19 +54,26 @@ export default function AccountsPage() {
     onSuccess: () => {
       toast.success('Account deleted')
       qc.invalidateQueries({ queryKey: ['accounts'] })
-      qc.invalidateQueries({queryKey: ['account_balances']})
+      qc.invalidateQueries({ queryKey: ['account_balances'] })
     },
     onError: (e: any) => toast.error(e.message ?? 'Failed to delete'),
   })
 
   return (
-    <main className="px-6 py-8">
+    <main className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Accounts</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
+          <p className="text-sm text-slate-500">
+            Total balance:&nbsp;
+            <span className="font-semibold">{fmtMoney(total)}</span>
+          </p>
+        </div>
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>Add Account</Button>
+            <Button className="rounded-lg">Add Account</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -79,7 +83,12 @@ export default function AccountsPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input
+                  id="name"
+                  placeholder="e.g., Chequing"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -96,48 +105,56 @@ export default function AccountsPage() {
                 </select>
               </div>
 
-              <Button
-                onClick={() => {
-                  if (!name.trim()) {
-                    toast.error('Please enter a name')
-                    return
-                  }
-                  createMut.mutate({ name: name.trim(), currency })
-                }}
-              >
-                Create
-              </Button>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setOpen(false)} className="rounded-lg">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!name.trim()) return toast.error('Please enter a name')
+                    createMut.mutate({ name: name.trim(), currency })
+                  }}
+                  disabled={createMut.isPending}
+                  className="rounded-lg"
+                >
+                  {createMut.isPending ? 'Creating…' : 'Create'}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Separator className="my-4" />
+      <Separator />
 
-      {isLoading && <p>Loading…</p>}
-
+      {/* States */}
+      {isLoading && <p className="text-sm text-slate-500">Loading accounts…</p>}
       {error && (
         <p className="text-red-600 border border-red-200 bg-red-50 p-3 rounded">
           {(error as Error).message}
         </p>
       )}
 
-      <div className="grid gap-3">
-        {data?.map((a) => (
-          <Card key={a.id} className="p-4 flex items-center justify-between">
+      {/* Grid */}
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {(accounts ?? []).map((a) => (
+          <Card
+            key={a.id}
+            className="p-4 rounded-xl border-slate-200 shadow-sm flex items-center justify-between"
+          >
             <div>
               <div className="font-medium">{a.name}</div>
-              <div className="text-sm text-muted-foreground">{a.currency}</div>
+              <div className="text-sm text-slate-500">{a.currency}</div>
             </div>
 
-            {/* 👉 Add this right side */}
             <div className="text-right">
               <div className="text-lg font-semibold">
                 {fmtMoney(Number(balanceMap[a.id]?.balance ?? 0), a.currency)}
               </div>
               <Button
                 variant="destructive"
-                className="mt-2"
+                size="sm"
+                className="mt-2 rounded-lg"
                 onClick={() => deleteMut.mutate(a.id)}
               >
                 Delete
@@ -145,8 +162,11 @@ export default function AccountsPage() {
             </div>
           </Card>
         ))}
-        {data?.length === 0 && !isLoading && !error && (
-          <p className="text-sm text-muted-foreground">No accounts yet. Create one to get started.</p>
+
+        {(accounts ?? []).length === 0 && !isLoading && !error && (
+          <Card className="p-8 rounded-xl border-dashed border-2 text-center text-slate-500">
+            No accounts yet. Click <span className="font-medium">Add Account</span> to get started.
+          </Card>
         )}
       </div>
     </main>

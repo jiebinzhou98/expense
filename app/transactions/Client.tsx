@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { fmtMoney } from '@/lib/format'
 
 type CreateTxForm = {
   account_id: string
@@ -97,12 +98,14 @@ export default function TransactionsClient() {
   }
 
   return (
-    <main className="px-6 py-8 space-y-6">
+    <main className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Transactions</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
       </div>
 
-      <Card className="p-4 space-y-4">
+      {/* Create form */}
+      <Card className="p-4 rounded-xl border-slate-200 shadow-sm space-y-4">
         <div className="grid md:grid-cols-6 gap-3">
           <div className="space-y-2 md:col-span-2">
             <Label>Account</Label>
@@ -172,8 +175,8 @@ export default function TransactionsClient() {
             />
           </div>
           <div className="flex items-end">
-            <Button onClick={submit} disabled={createMut.isPending} className="w-full">
-              Add
+            <Button onClick={submit} disabled={createMut.isPending} className="w-full rounded-lg">
+              {createMut.isPending ? 'Adding…' : 'Add'}
             </Button>
           </div>
         </div>
@@ -181,33 +184,37 @@ export default function TransactionsClient() {
 
       <Separator />
 
-      <div className="flex gap-3 items-end">
-        <div className="space-y-2">
-          <Label>Filter by account</Label>
-          <select
-            className="h-9 rounded-md border px-3"
-            value={accountFilter}
-            onChange={(e) => setAccountFilter(e.target.value)}
-          >
-            <option value="">All</option>
-            {(accounts ?? []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+      {/* Filters */}
+      <Card className="p-4 rounded-xl border-slate-200 shadow-sm">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="space-y-2">
+            <Label>Filter by account</Label>
+            <select
+              className="h-9 rounded-md border px-3"
+              value={accountFilter}
+              onChange={(e) => setAccountFilter(e.target.value)}
+            >
+              <option value="">All</option>
+              {(accounts ?? []).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <select
+              className="h-9 rounded-md border px-3"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as any)}
+            >
+              <option value="all">All</option>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label>Type</Label>
-          <select
-            className="h-9 rounded-md border px-3"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as any)}
-          >
-            <option value="all">All</option>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
-        </div>
-      </div>
+      </Card>
 
-      {isLoading && <p>Loading…</p>}
+      {/* List */}
+      {isLoading && <p className="text-sm text-slate-500">Loading…</p>}
       {error && (
         <p className="text-red-600 border border-red-200 bg-red-50 p-3 rounded">
           {(error as Error).message}
@@ -215,23 +222,33 @@ export default function TransactionsClient() {
       )}
 
       <div className="grid gap-3">
-        {visibleTxs.map(t => (
-          <Card key={t.id} className="p-4 flex items-center justify-between">
-            <div>
-              <div className="font-medium">
-                {Number(t.amount).toFixed(2)} {Number(t.amount) >= 0 ? '🟢' : '🔴'}
+        {visibleTxs.map(t => {
+          const amt = Number(t.amount)
+          const isIncome = amt >= 0
+          return (
+            <Card key={t.id} className="p-4 rounded-xl border-slate-200 shadow-sm flex items-center justify-between">
+              <div>
+                <div className="font-medium">
+                  <span className={`mr-2 ${isIncome ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {fmtMoney(amt)}
+                  </span>
+                  {isIncome ? 'Income' : 'Expense'}
+                </div>
+                <div className="text-sm text-slate-500">
+                  {new Date(t.occurred_at).toLocaleDateString()} · {t.note ?? '—'}
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {new Date(t.occurred_at).toLocaleDateString()} · {t.note ?? '—'}
-              </div>
-            </div>
-            <Button variant="destructive" onClick={() => deleteMut.mutate(t.id)}>
-              Delete
-            </Button>
-          </Card>
-        ))}
+              <Button variant="destructive" onClick={() => deleteMut.mutate(t.id)} className="rounded-lg">
+                Delete
+              </Button>
+            </Card>
+          )
+        })}
+
         {visibleTxs.length === 0 && !isLoading && !error && (
-          <p className="text-sm text-muted-foreground">No transactions yet.</p>
+          <Card className="p-8 rounded-xl border-dashed border-2 text-center text-slate-500">
+            No transactions yet.
+          </Card>
         )}
       </div>
     </main>
