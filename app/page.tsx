@@ -34,7 +34,7 @@ export default function Dashboard() {
         </Card>
         <Card className="p-4">
           <div className="text-sm text-muted-foreground">This month expense</div>
-          <div className="text-2xl font-semibold">-{fmtMoney(-expense)}</div>          {/* ← changed */}
+          <div className="text-2xl font-semibold">{fmtMoney(-expense)}</div>          {/* ← changed */}
         </Card>
         <Card className="p-4">
           <div className="text-sm text-muted-foreground">This month net</div>

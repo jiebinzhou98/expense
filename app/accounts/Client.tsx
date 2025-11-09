@@ -57,6 +57,7 @@ export default function AccountsPage() {
     onSuccess: () => {
       toast.success('Account deleted')
       qc.invalidateQueries({ queryKey: ['accounts'] })
+      qc.invalidateQueries({queryKey: ['account_balances']})
     },
     onError: (e: any) => toast.error(e.message ?? 'Failed to delete'),
   })
